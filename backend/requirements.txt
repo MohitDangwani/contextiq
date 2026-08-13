@@ -8,7 +8,6 @@ pydantic-settings
 sqlalchemy
 psycopg2-binary
 pgvector
-alembic
 
 # --- AI / LLM / RAG ---
 langgraph
