@@ -1,0 +1,21 @@
+# Placeholder compose file — finalized in Phase 14 (Deployment).
+# Services will be filled in as each layer is built:
+#   - db: postgres with pgvector extension (Phase 2)
+#   - backend: FastAPI app (Phase 6)
+#   - mcp_server: MCP server (Phase 9)
+#   - frontend: React/Vite app (Phase 11)
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-contextiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contextiq}
+      POSTGRES_DB: ${POSTGRES_DB:-contextiq}
+    ports:
+      - "5432:5432"
+    volumes:
+      - contextiq_pgdata:/var/lib/postgresql/data
+
+volumes:
+  contextiq_pgdata:

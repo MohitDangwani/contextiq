@@ -1,0 +1,24 @@
+# --- Web framework ---
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+# --- Database ---
+sqlalchemy
+psycopg2-binary
+pgvector
+alembic
+
+# --- AI / LLM / RAG ---
+langgraph
+langchain-core
+openai
+
+# --- Utilities ---
+python-dotenv
+httpx
+
+# --- Testing ---
+pytest
+pytest-asyncio
