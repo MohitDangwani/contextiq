@@ -13,6 +13,7 @@ pgvector
 langgraph
 langchain-core
 openai
+sentence-transformers  # local embedding model (no API key needed) -- see docs/rag.md
 
 # --- Utilities ---
 python-dotenv

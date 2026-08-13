@@ -10,6 +10,7 @@ from app.models.column import DatasetColumn
 from app.models.lineage import LineageEdge
 from app.models.quality import DataQualityCheck
 from app.models.documentation import Documentation
+from app.models.chunk import ChunkSourceType, DocumentChunk
 
 __all__ = [
     "Base",
@@ -22,4 +23,6 @@ __all__ = [
     "LineageEdge",
     "DataQualityCheck",
     "Documentation",
+    "ChunkSourceType",
+    "DocumentChunk",
 ]
