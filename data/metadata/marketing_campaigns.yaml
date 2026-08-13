@@ -1,0 +1,40 @@
+asset_id: marketing_campaigns
+asset_name: Marketing Campaigns
+asset_type: table
+description: >
+  One row per marketing campaign. Referenced by customers.acquisition_campaign_id
+  to attribute a signup to the campaign that brought them in.
+domain: marketing
+source_system: raw_warehouse
+owner:
+  name: Marketing Ops
+  email: marketing-ops@brightcart.example
+  team: Marketing
+tags: [marketing]
+pii_status: none
+quality_score: 80.0
+data_last_updated: "2026-08-01T00:00:00"
+
+columns:
+  - name: campaign_id
+    data_type: INTEGER
+    description: Primary key.
+    is_nullable: false
+  - name: campaign_name
+    data_type: TEXT
+  - name: channel
+    data_type: TEXT
+    description: "One of: email, search, social."
+  - name: start_date
+    data_type: DATE
+  - name: end_date
+    data_type: DATE
+  - name: budget
+    data_type: NUMERIC
+
+quality_checks:
+  - check_name: freshness
+    status: warn
+    score: 75.0
+    message: "No campaigns created since 2026-08-01; confirm the marketing calendar is current."
+    checked_at: "2026-08-13T06:05:00"

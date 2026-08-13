@@ -1,0 +1,16 @@
+customer_id,first_name,last_name,email,phone,signup_date,country,acquisition_campaign_id,lifetime_value
+1,Ava,Thompson,ava.thompson@example.com,+1-202-555-0142,2025-01-12,US,,1240.50
+2,Liam,Chen,liam.chen@example.com,+1-415-555-0110,2025-02-03,US,2,860.00
+3,Sophia,Martinez,sophia.martinez@example.com,+1-312-555-0199,2025-02-20,US,,2110.75
+4,Noah,Wright,noah.wright@example.com,+44-20-7946-0958,2025-03-05,UK,3,540.20
+5,Emma,Dubois,emma.dubois@example.com,+33-1-44-55-66-77,2025-03-18,FR,,1975.00
+6,Oliver,Nakamura,oliver.nakamura@example.com,+1-646-555-0176,2025-04-02,US,2,320.00
+7,Isabella,Rossi,isabella.rossi@example.com,+39-06-6979-1234,2025-04-22,IT,,1420.30
+8,Ethan,Kowalski,ethan.kowalski@example.com,+1-312-555-0134,2025-05-10,US,,780.60
+9,Mia,Schmidt,mia.schmidt@example.com,+49-30-1234567,2025-05-29,DE,3,2650.00
+10,Lucas,Silva,lucas.silva@example.com,+55-11-91234-5678,2025-06-14,BR,,410.00
+11,Charlotte,Johansson,charlotte.johansson@example.com,+46-8-123-456,2025-06-30,SE,,1590.90
+12,Benjamin,Kim,benjamin.kim@example.com,+1-206-555-0123,2025-07-11,US,2,95.00
+13,Amelia,Novak,amelia.novak@example.com,+420-2-1234-5678,2025-07-25,CZ,,3300.40
+14,James,Okafor,james.okafor@example.com,+234-1-2345678,2025-08-02,NG,4,220.00
+15,Harper,Andersen,harper.andersen@example.com,+45-32-12-34-56,2025-08-09,DK,,1130.00

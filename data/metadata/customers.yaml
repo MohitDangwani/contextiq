@@ -1,0 +1,63 @@
+asset_id: customers
+asset_name: Customers
+asset_type: table
+description: >
+  One row per registered Brightcart customer. Source of truth for customer
+  identity and contact details; referenced by orders via customer_id.
+domain: sales
+source_system: raw_warehouse
+owner:
+  name: Sales Engineering
+  email: sales-eng@brightcart.example
+  team: Sales
+tags: [core, pii]
+pii_status: contains_pii
+quality_score: 96.0
+data_last_updated: "2026-08-13T06:00:00"
+
+columns:
+  - name: customer_id
+    data_type: INTEGER
+    description: Primary key.
+    is_nullable: false
+  - name: first_name
+    data_type: TEXT
+    is_pii: true
+    pii_category: name
+  - name: last_name
+    data_type: TEXT
+    is_pii: true
+    pii_category: name
+  - name: email
+    data_type: TEXT
+    is_pii: true
+    pii_category: email
+  - name: phone
+    data_type: TEXT
+    is_pii: true
+    pii_category: phone
+    is_nullable: true
+  - name: signup_date
+    data_type: DATE
+  - name: country
+    data_type: TEXT
+  - name: acquisition_campaign_id
+    data_type: INTEGER
+    description: FK to marketing_campaigns.campaign_id. Null if organic signup.
+    is_nullable: true
+  - name: lifetime_value
+    data_type: NUMERIC
+    description: Predicted total value of the customer relationship.
+    business_term: customer_lifetime_value
+
+quality_checks:
+  - check_name: completeness
+    status: pass
+    score: 98.0
+    message: "0.2% of rows missing phone numbers; within tolerance."
+    checked_at: "2026-08-12T02:00:00"
+  - check_name: freshness
+    status: pass
+    score: 100.0
+    message: "Synced from source in the last hour."
+    checked_at: "2026-08-13T06:05:00"

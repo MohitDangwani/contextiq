@@ -1,0 +1,45 @@
+asset_id: revenue_model
+asset_name: Revenue Model
+asset_type: model
+description: >
+  dbt-style transformation that joins order_items to orders, products,
+  payments, and returns to compute recognized net revenue per line item.
+  Upstream of monthly_revenue.
+domain: finance
+source_system: dbt
+owner:
+  name: Finance Analytics
+  email: finance-analytics@brightcart.example
+  team: Finance
+tags: [finance, revenue, derived]
+pii_status: none
+quality_score: 93.0
+data_last_updated: "2026-08-13T04:00:00"
+
+columns:
+  - name: order_item_id
+    data_type: INTEGER
+    description: FK to order_items.order_item_id.
+  - name: order_date
+    data_type: TIMESTAMP
+  - name: customer_id
+    data_type: INTEGER
+  - name: product_id
+    data_type: INTEGER
+  - name: gross_amount
+    data_type: NUMERIC
+    description: unit_price * quantity - discount_amount, before returns.
+  - name: refund_amount
+    data_type: NUMERIC
+    description: Refund amount from returns, if this line item was returned.
+  - name: net_revenue
+    data_type: NUMERIC
+    description: gross_amount - refund_amount.
+    business_term: net_revenue
+
+quality_checks:
+  - check_name: validity
+    status: pass
+    score: 93.0
+    message: "net_revenue reconciles with orders/payments/returns for 100% of sampled rows."
+    checked_at: "2026-08-13T04:10:00"

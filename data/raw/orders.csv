@@ -1,0 +1,26 @@
+order_id,customer_id,order_date,status,shipping_address,total_amount,source_channel
+1,1,2026-01-05,completed,"120 Maple St, Washington, DC",99.98,web
+2,2,2026-01-08,completed,"88 Market St, San Francisco, CA",49.99,mobile
+3,3,2026-01-15,completed,"500 Lake Shore Dr, Chicago, IL",74.97,web
+4,4,2026-01-20,cancelled,"10 Baker St, London",24.99,web
+5,5,2026-01-25,completed,"12 Rue de Rivoli, Paris",89.98,mobile
+6,1,2026-02-02,completed,"120 Maple St, Washington, DC",59.99,web
+7,6,2026-02-05,completed,"200 Broadway, New York, NY",79.99,web
+8,7,2026-02-10,completed,"Via Roma 12, Milan",34.99,marketplace
+9,8,2026-02-14,refunded,"77 Wacker Dr, Chicago, IL",129.99,web
+10,9,2026-02-18,completed,"Alexanderplatz 5, Berlin",164.97,mobile
+11,3,2026-02-22,completed,"500 Lake Shore Dr, Chicago, IL",19.99,web
+12,10,2026-03-01,completed,"Av. Paulista 900, Sao Paulo",129.99,marketplace
+13,11,2026-03-05,completed,"Kungsgatan 10, Stockholm",54.99,web
+14,2,2026-03-10,completed,"88 Market St, San Francisco, CA",24.99,mobile
+15,12,2026-03-15,cancelled,"400 Pine St, Seattle, WA",79.99,web
+16,13,2026-03-20,completed,"Wenceslas Sq 1, Prague",44.98,web
+17,5,2026-04-02,completed,"12 Rue de Rivoli, Paris",29.99,mobile
+18,14,2026-04-10,completed,"Marina Rd 3, Lagos",59.99,web
+19,15,2026-04-18,completed,"Nyhavn 2, Copenhagen",79.97,web
+20,9,2026-04-25,completed,"Alexanderplatz 5, Berlin",49.99,mobile
+21,1,2026-05-05,completed,"120 Maple St, Washington, DC",34.99,web
+22,6,2026-05-12,refunded,"200 Broadway, New York, NY",24.99,web
+23,3,2026-05-20,completed,"500 Lake Shore Dr, Chicago, IL",99.98,marketplace
+24,7,2026-06-01,completed,"Via Roma 12, Milan",129.99,web
+25,13,2026-06-10,processing,"Wenceslas Sq 1, Prague",54.99,mobile

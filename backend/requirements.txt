@@ -17,6 +17,7 @@ openai
 # --- Utilities ---
 python-dotenv
 httpx
+PyYAML
 
 # --- Testing ---
 pytest

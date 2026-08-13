@@ -1,0 +1,6 @@
+return_id,order_id,order_item_id,return_reason,refund_amount,returned_at
+1,9,13,defective,129.99,2026-02-16
+2,22,31,changed_mind,24.99,2026-05-14
+3,10,15,wrong_item,14.99,2026-02-20
+4,3,6,damaged_in_transit,19.99,2026-01-18
+5,19,28,changed_mind,19.99,2026-04-20

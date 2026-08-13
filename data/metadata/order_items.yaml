@@ -1,0 +1,42 @@
+asset_id: order_items
+asset_name: Order Items
+asset_type: table
+description: >
+  One row per line item within an order. Links an order to the product(s)
+  purchased, with quantity, unit price, and any discount applied.
+domain: sales
+source_system: raw_warehouse
+owner:
+  name: Sales Engineering
+  email: sales-eng@brightcart.example
+  team: Sales
+tags: [core]
+pii_status: none
+quality_score: 94.0
+data_last_updated: "2026-08-13T06:00:00"
+
+columns:
+  - name: order_item_id
+    data_type: INTEGER
+    description: Primary key.
+    is_nullable: false
+  - name: order_id
+    data_type: INTEGER
+    description: FK to orders.order_id.
+  - name: product_id
+    data_type: INTEGER
+    description: FK to products.product_id.
+  - name: quantity
+    data_type: INTEGER
+  - name: unit_price
+    data_type: NUMERIC
+    description: Price per unit at time of purchase (may differ from current list_price).
+  - name: discount_amount
+    data_type: NUMERIC
+
+quality_checks:
+  - check_name: uniqueness
+    status: pass
+    score: 100.0
+    message: "No duplicate order_item_id values."
+    checked_at: "2026-08-12T02:00:00"

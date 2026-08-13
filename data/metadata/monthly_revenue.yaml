@@ -1,0 +1,37 @@
+asset_id: monthly_revenue
+asset_name: Monthly Revenue
+asset_type: model
+description: >
+  revenue_model aggregated by calendar month. Powers the Revenue
+  Dashboard's headline metrics.
+domain: finance
+source_system: dbt
+owner:
+  name: Finance Analytics
+  email: finance-analytics@brightcart.example
+  team: Finance
+tags: [finance, revenue, derived]
+pii_status: none
+quality_score: 95.0
+data_last_updated: "2026-08-01T00:00:00"
+
+columns:
+  - name: month
+    data_type: DATE
+    description: First day of the calendar month.
+  - name: total_orders
+    data_type: INTEGER
+  - name: gross_revenue
+    data_type: NUMERIC
+  - name: refunds
+    data_type: NUMERIC
+  - name: net_revenue
+    data_type: NUMERIC
+    business_term: net_revenue
+
+quality_checks:
+  - check_name: freshness
+    status: pass
+    score: 95.0
+    message: "Aggregated through the end of last full month."
+    checked_at: "2026-08-01T05:00:00"

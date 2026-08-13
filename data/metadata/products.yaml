@@ -1,0 +1,49 @@
+asset_id: products
+asset_name: Products
+asset_type: table
+description: >
+  Product catalog: one row per sellable product, including cost, list
+  price, and whether it is currently active for sale.
+domain: catalog
+source_system: raw_warehouse
+owner:
+  name: Catalog Team
+  email: catalog@brightcart.example
+  team: Catalog
+tags: [core, catalog]
+pii_status: none
+quality_score: 89.0
+data_last_updated: "2026-08-10T09:00:00"
+
+columns:
+  - name: product_id
+    data_type: INTEGER
+    description: Primary key.
+    is_nullable: false
+  - name: product_name
+    data_type: TEXT
+  - name: category
+    data_type: TEXT
+  - name: brand
+    data_type: TEXT
+  - name: unit_cost
+    data_type: NUMERIC
+    description: Brightcart's cost to acquire/produce one unit.
+  - name: list_price
+    data_type: NUMERIC
+    description: Current customer-facing price.
+  - name: is_active
+    data_type: BOOLEAN
+    description: Whether the product is currently available for sale.
+
+quality_checks:
+  - check_name: completeness
+    status: pass
+    score: 89.0
+    message: "All active products have list_price and unit_cost populated."
+    checked_at: "2026-08-10T09:00:00"
+  - check_name: freshness
+    status: warn
+    score: 70.0
+    message: "Catalog last synced 3 days ago; expected daily sync."
+    checked_at: "2026-08-13T06:05:00"

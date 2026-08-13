@@ -1,0 +1,42 @@
+asset_id: returns
+asset_name: Returns
+asset_type: table
+description: >
+  One row per returned item. Links back to the specific order and order
+  item that was returned, with reason and refund amount.
+domain: finance
+source_system: raw_warehouse
+owner:
+  name: Finance Analytics
+  email: finance-analytics@brightcart.example
+  team: Finance
+tags: [finance]
+pii_status: none
+quality_score: 90.0
+data_last_updated: "2026-08-11T00:00:00"
+
+columns:
+  - name: return_id
+    data_type: INTEGER
+    description: Primary key.
+    is_nullable: false
+  - name: order_id
+    data_type: INTEGER
+    description: FK to orders.order_id.
+  - name: order_item_id
+    data_type: INTEGER
+    description: FK to order_items.order_item_id.
+  - name: return_reason
+    data_type: TEXT
+    description: "One of: defective, changed_mind, wrong_item, damaged_in_transit."
+  - name: refund_amount
+    data_type: NUMERIC
+  - name: returned_at
+    data_type: TIMESTAMP
+
+quality_checks:
+  - check_name: completeness
+    status: pass
+    score: 90.0
+    message: "All returns are linked to a valid order_item_id."
+    checked_at: "2026-08-11T00:00:00"

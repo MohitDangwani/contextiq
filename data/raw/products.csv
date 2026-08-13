@@ -1,0 +1,13 @@
+product_id,product_name,category,brand,unit_cost,list_price,is_active
+1,Trailhead Backpack 28L,Outdoor,Trailhead,32.00,79.99,true
+2,Aurora Wireless Earbuds,Electronics,Aurora,18.50,49.99,true
+3,CozyKnit Wool Sweater,Apparel,CozyKnit,14.00,54.99,true
+4,SteelBrew Pour-Over Kettle,Home,SteelBrew,9.75,29.99,true
+5,Lumen Desk Lamp,Home,Lumen,11.20,34.99,true
+6,Trailhead Hiking Poles,Outdoor,Trailhead,7.80,24.99,true
+7,PixelFrame Photo Print 8x10,Home Decor,PixelFrame,3.10,14.99,true
+8,Aurora Bluetooth Speaker,Electronics,Aurora,22.00,59.99,true
+9,CozyKnit Beanie,Apparel,CozyKnit,4.50,19.99,true
+10,VoyageCase Carry-On Luggage,Travel,VoyageCase,45.00,129.99,true
+11,SteelBrew Travel Mug,Home,SteelBrew,5.20,17.99,false
+12,Lumen Smart Bulb 2-Pack,Home,Lumen,6.60,24.99,true

@@ -32,7 +32,9 @@ class Asset(TimestampMixin, Base):
 
     asset_id: Mapped[str] = mapped_column(String(120), primary_key=True)
     asset_name: Mapped[str] = mapped_column(String(200))
-    asset_type: Mapped[AssetType] = mapped_column(Enum(AssetType, name="asset_type"))
+    asset_type: Mapped[AssetType] = mapped_column(
+        Enum(AssetType, name="asset_type", values_callable=lambda e: [m.value for m in e])
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     domain: Mapped[str | None] = mapped_column(String(60), nullable=True)
     source_system: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -41,7 +43,8 @@ class Asset(TimestampMixin, Base):
     owner: Mapped["Owner | None"] = relationship(back_populates="assets")
 
     pii_status: Mapped[PIIStatus] = mapped_column(
-        Enum(PIIStatus, name="pii_status"), default=PIIStatus.UNKNOWN
+        Enum(PIIStatus, name="pii_status", values_callable=lambda e: [m.value for m in e]),
+        default=PIIStatus.UNKNOWN,
     )
     quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     data_last_updated: Mapped[datetime | None] = mapped_column(nullable=True)

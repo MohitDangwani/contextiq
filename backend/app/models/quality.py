@@ -27,7 +27,7 @@ class DataQualityCheck(Base):
     asset_id: Mapped[str] = mapped_column(ForeignKey("assets.asset_id"))
     check_name: Mapped[str] = mapped_column(String(60))
     status: Mapped[QualityCheckStatus] = mapped_column(
-        Enum(QualityCheckStatus, name="quality_check_status")
+        Enum(QualityCheckStatus, name="quality_check_status", values_callable=lambda e: [m.value for m in e])
     )
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -1,0 +1,56 @@
+asset_id: payments
+asset_name: Payments
+asset_type: table
+description: >
+  One row per payment transaction against an order. An order can have at
+  most one payment in this simplified model (no partial/split payments).
+domain: finance
+source_system: raw_warehouse
+owner:
+  name: Finance Analytics
+  email: finance-analytics@brightcart.example
+  team: Finance
+tags: [core, finance, pii]
+pii_status: contains_pii
+quality_score: 72.0
+data_last_updated: "2026-06-10T00:00:00"
+
+columns:
+  - name: payment_id
+    data_type: INTEGER
+    description: Primary key.
+    is_nullable: false
+  - name: order_id
+    data_type: INTEGER
+    description: FK to orders.order_id.
+  - name: payment_method
+    data_type: TEXT
+    description: "One of: credit_card, paypal, gift_card."
+  - name: card_last4
+    data_type: TEXT
+    description: Last 4 digits of the card, only populated for credit_card payments.
+    is_pii: true
+    pii_category: financial
+    is_nullable: true
+  - name: amount
+    data_type: NUMERIC
+  - name: payment_status
+    data_type: TEXT
+    description: "One of: paid, refunded, pending."
+  - name: paid_at
+    data_type: TIMESTAMP
+
+quality_checks:
+  - check_name: freshness
+    status: fail
+    score: 40.0
+    message: >
+      No new payment records ingested since 2026-06-10 (33+ days as of
+      last check) — investigate the payments pipeline before trusting
+      recent revenue figures derived from this table.
+    checked_at: "2026-08-13T07:00:00"
+  - check_name: completeness
+    status: pass
+    score: 96.0
+    message: "All paid/refunded rows have a non-null payment_method."
+    checked_at: "2026-08-12T02:00:00"

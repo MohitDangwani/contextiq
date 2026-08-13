@@ -1,0 +1,19 @@
+# Shared business term definitions. Kept central (not duplicated per-asset)
+# because the same term (e.g. customer_lifetime_value) can be referenced by
+# columns across multiple datasets.
+terms:
+  - term: customer_lifetime_value
+    definition: >
+      Predicted total revenue a customer will generate over the full
+      relationship with Brightcart: historical net spend to date plus a
+      forward-looking projection based on purchase frequency and average
+      order value.
+    domain: revenue
+
+  - term: net_revenue
+    definition: >
+      Revenue recognized after subtracting returns and refunds from gross
+      order value. Calculated in the revenue_model transformation as
+      gross_amount - refund_amount, then aggregated by month in
+      monthly_revenue.
+    domain: revenue

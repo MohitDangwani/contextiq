@@ -1,0 +1,44 @@
+# Asset-to-asset lineage edges. Deliberately a graph (multiple sources
+# fan into revenue_model), not a single chain — that's what real lineage
+# looks like, and it's what makes "which tables contribute to the revenue
+# dashboard?" a non-trivial, interesting question to answer.
+edges:
+  - source: customers
+    target: orders
+    transformation: "foreign key: orders.customer_id"
+    description: Each order belongs to exactly one customer.
+
+  - source: products
+    target: order_items
+    transformation: "foreign key: order_items.product_id"
+    description: Each order item references the product that was purchased.
+
+  - source: orders
+    target: order_items
+    transformation: "foreign key: order_items.order_id"
+    description: Each order item belongs to exactly one order.
+
+  - source: order_items
+    target: revenue_model
+    transformation: "dbt model: revenue_model"
+    description: revenue_model joins order_items to orders and products to compute gross_amount per line item.
+
+  - source: payments
+    target: revenue_model
+    transformation: "dbt model: revenue_model"
+    description: Revenue is only recognized for line items whose order has a paid/refunded payment.
+
+  - source: returns
+    target: revenue_model
+    transformation: "dbt model: revenue_model"
+    description: refund_amount from returns is subtracted from gross_amount to compute net_revenue.
+
+  - source: revenue_model
+    target: monthly_revenue
+    transformation: "dbt model: monthly_revenue"
+    description: revenue_model rows are grouped by calendar month and summed.
+
+  - source: monthly_revenue
+    target: revenue_dashboard
+    transformation: "BI extract"
+    description: The Revenue Dashboard's headline tiles read directly from monthly_revenue.

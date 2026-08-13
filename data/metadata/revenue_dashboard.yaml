@@ -1,0 +1,22 @@
+asset_id: revenue_dashboard
+asset_name: Revenue Dashboard
+asset_type: dashboard
+description: >
+  BI dashboard showing headline revenue metrics (net revenue, order
+  volume, refund rate) sourced from monthly_revenue. Not itself a
+  queryable table — it has no columns of its own, and its
+  trustworthiness is inherited from the quality of the models feeding it
+  (see lineage).
+domain: finance
+source_system: looker
+owner:
+  name: BI Team
+  email: bi-team@brightcart.example
+  team: Analytics
+tags: [revenue, dashboard]
+pii_status: none
+quality_score:
+data_last_updated: "2026-08-12T18:00:00"
+
+columns: []
+quality_checks: []

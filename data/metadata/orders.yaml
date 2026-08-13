@@ -1,0 +1,52 @@
+asset_id: orders
+asset_name: Orders
+asset_type: table
+description: >
+  One row per order placed on Brightcart. Each order belongs to exactly
+  one customer and contains one or more order_items.
+domain: sales
+source_system: raw_warehouse
+owner:
+  name: Sales Engineering
+  email: sales-eng@brightcart.example
+  team: Sales
+tags: [core, pii]
+pii_status: contains_pii
+quality_score: 91.0
+data_last_updated: "2026-08-13T06:00:00"
+
+columns:
+  - name: order_id
+    data_type: INTEGER
+    description: Primary key.
+    is_nullable: false
+  - name: customer_id
+    data_type: INTEGER
+    description: FK to customers.customer_id.
+  - name: order_date
+    data_type: TIMESTAMP
+  - name: status
+    data_type: TEXT
+    description: "One of: completed, cancelled, refunded, processing."
+  - name: shipping_address
+    data_type: TEXT
+    is_pii: true
+    pii_category: address
+  - name: total_amount
+    data_type: NUMERIC
+    description: Sum of order_items (unit_price * quantity - discount_amount) for this order.
+  - name: source_channel
+    data_type: TEXT
+    description: "One of: web, mobile, marketplace."
+
+quality_checks:
+  - check_name: validity
+    status: warn
+    score: 85.0
+    message: "3 orders have a shipping_address missing a postal code."
+    checked_at: "2026-08-12T02:00:00"
+  - check_name: freshness
+    status: pass
+    score: 100.0
+    message: "Synced from source in the last hour."
+    checked_at: "2026-08-13T06:05:00"
