@@ -325,6 +325,22 @@ class ToolSpec:
     run: Callable[..., ToolResult]  # actually executed by the graph
 
 
+def _sanitize_args(kwargs: dict) -> dict:
+    """Some LLM tool-calling clients (observed with Nemotron 3 Nano via LM
+    Studio) serialize an omitted/optional argument as the literal string
+    "None" instead of leaving it out or using JSON null. Left as is, that
+    string is then used as a real filter value (asset_id="None",
+    query="None", ...), which silently matches nothing and gets misread as
+    "there is no such data in ContextIQ" -- a false negative caused by a
+    malformed tool call, not a genuine absence of evidence. Coerce it back
+    to a real None here, at the tool dispatch boundary, before it reaches
+    any _run_* function."""
+    return {
+        k: (None if isinstance(v, str) and v.strip().lower() in ("none", "null") else v)
+        for k, v in kwargs.items()
+    }
+
+
 def build_tool_specs(db: Session) -> dict[str, ToolSpec]:
     """One ToolSpec per agent capability, bound to this specific DB
     session. Call once per agent run (see app/agent/run.py) -- tools are
@@ -337,9 +353,9 @@ def build_tool_specs(db: Session) -> dict[str, ToolSpec]:
             name=name,
             description=description,
             args_schema=args_schema,
-            func=lambda **kw: run_fn(db, **kw).summary,
+            func=lambda **kw: run_fn(db, **_sanitize_args(kw)).summary,
         )
-        specs[name] = ToolSpec(tool=lc_tool, run=lambda **kw: run_fn(db, **kw))
+        specs[name] = ToolSpec(tool=lc_tool, run=lambda **kw: run_fn(db, **_sanitize_args(kw)))
 
     register(
         "search_assets",
