@@ -1,0 +1,68 @@
+"""Top-level entrypoint for running the ContextIQ agent.
+
+Independent of FastAPI: owns its own DB session unless one is passed in
+(tests pass one already open against the live database). This is the
+only function other layers (a future API route, MCP, evaluation) should
+call -- everything else in app/agent/ is an implementation detail.
+"""
+from langchain_core.messages import HumanMessage, SystemMessage
+from sqlalchemy.orm import Session
+
+from app.agent.graph import SYSTEM_PROMPT, build_graph
+from app.agent.state import AgentResult, EvidenceItem, SourceRef
+from app.config.database import SessionLocal
+
+NOT_FOUND_MESSAGE = (
+    "I could not find information about that in ContextIQ's available data "
+    "(metadata, lineage, quality, business definitions, or documentation)."
+)
+
+
+def _dedupe_sources(evidence: list[EvidenceItem]) -> list[SourceRef]:
+    seen: set[tuple[str, str]] = set()
+    sources: list[SourceRef] = []
+    for item in evidence:
+        key = (item.source_type, item.citation)
+        if key in seen:
+            continue
+        seen.add(key)
+        sources.append(SourceRef(label=item.citation, asset_id=item.asset_id, source_type=item.source_type))
+    return sources
+
+
+def run_agent(question: str, db: Session | None = None) -> AgentResult:
+    owns_session = db is None
+    session = db or SessionLocal()
+    try:
+        graph = build_graph(session)
+        initial_state = {
+            "messages": [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=question)],
+            "question": question,
+            "trace": [],
+            "evidence": [],
+            "iterations": 0,
+        }
+        final_state = graph.invoke(initial_state, config={"recursion_limit": 25})
+
+        evidence = final_state["evidence"]
+        if evidence:
+            last_content = final_state["messages"][-1].content
+            answer = last_content if isinstance(last_content, str) and last_content.strip() else NOT_FOUND_MESSAGE
+        else:
+            # No grounding evidence was gathered. Enforced here in code --
+            # not just requested in the system prompt -- because a small
+            # local model can't be trusted 100% to follow instructions on
+            # every call. This is the hard guarantee behind "the agent
+            # must not invent information."
+            answer = NOT_FOUND_MESSAGE
+
+        return AgentResult(
+            question=question,
+            answer=answer,
+            sources=_dedupe_sources(evidence),
+            evidence=evidence,
+            trace=final_state["trace"],
+        )
+    finally:
+        if owns_session:
+            session.close()

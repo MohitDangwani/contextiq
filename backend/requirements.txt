@@ -12,7 +12,7 @@ pgvector
 # --- AI / LLM / RAG ---
 langgraph
 langchain-core
-openai
+langchain-ollama  # local LLM provider (no API key needed) -- see docs/agent.md
 sentence-transformers  # local embedding model (no API key needed) -- see docs/rag.md
 
 # --- Utilities ---

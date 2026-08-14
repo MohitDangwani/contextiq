@@ -18,10 +18,14 @@ def search_assets(
     asset_type: AssetType | None = None,
     tag: str | None = None,
     pii_only: bool = False,
+    owner: str | None = None,
     limit: int = 50,
 ) -> list[Asset]:
     """Keyword + filter search over assets. All filters are optional and
-    combine with AND; `query` matches against asset_name/description."""
+    combine with AND; `query` matches against asset_name/description.
+    `owner` matches (case-insensitively, substring) against the owning
+    team/person's name -- e.g. "which PII datasets does Sales Engineering
+    own?" needs both pii_only and owner together."""
     stmt = db.query(Asset).options(selectinload(Asset.owner), selectinload(Asset.tags))
 
     if query:
@@ -35,6 +39,8 @@ def search_assets(
         stmt = stmt.filter(Asset.tags.any(name=tag))
     if pii_only:
         stmt = stmt.filter(Asset.pii_status == PIIStatus.CONTAINS_PII)
+    if owner:
+        stmt = stmt.join(Asset.owner).filter(Owner.name.ilike(f"%{owner}%"))
 
     return stmt.order_by(Asset.asset_id).limit(limit).all()
 
