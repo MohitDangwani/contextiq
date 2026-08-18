@@ -29,7 +29,7 @@ from langgraph.graph import END, StateGraph
 from sqlalchemy.orm import Session
 
 from app.agent.llm import get_chat_model
-from app.agent.state import AgentState, ToolInvocation
+from app.agent.state import AgentState, ToolInvocation, evidence_digest
 from app.agent.text import strip_thinking
 from app.agent.tools import build_tool_specs
 
@@ -57,16 +57,16 @@ before answering.
 knowledge to fill a gap -- if a tool didn't return it, it isn't evidence and it doesn't \
 belong in the answer.
 - If a tool result says something doesn't exist, that's your answer -- don't guess instead.
-- Before answering, check that what the tools returned actually addresses what was asked. If \
-none of it does, that's the same as not finding it -- say so, don't report unrelated facts \
-as if they were the answer. Example: asked for a dataset's SLA/uptime guarantee but the \
-tools only returned its schema or owner? That doesn't answer the question -- abstain rather \
-than substituting whatever unrelated facts you did find.
+- Before answering, check that what the tools returned actually addresses what was asked --
+don't report unrelated facts as if they were the answer.
 - If, after checking the relevant tools, you cannot find the information, say so explicitly \
 (e.g. "I don't have enough information in the ContextIQ catalog to answer that") instead of \
 guessing.
 - If only part of the question is answered by the tools, answer that part and clearly say \
 what's missing, instead of inventing it.
+- For a yes/no question, the first word of your answer must match the fact you go on to \
+state -- if evidence shows a negative/absent value (e.g. "none", "false", "no such..."), \
+lead with "No", not "Yes". Check this before responding.
 - When you have enough information, respond with a direct, concise final answer and stop \
 calling tools.
 """
@@ -76,14 +76,40 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _looks_incomplete(content) -> bool:
-    """True for empty content, and for a bare stub header (e.g. "Final
-    Answer:") with nothing after it -- both signs the model stopped before
-    writing the actual answer rather than genuinely having nothing to say."""
+# Generic "I give up" phrasing a model can produce even when it actually
+# has the evidence needed to answer -- observed with "Unable to determine"
+# on a question where check_quality had already returned a clear FAIL
+# verdict. Deliberately short and domain-agnostic (nothing about quality,
+# payments, or any specific tool/topic): this is about recognizing a
+# non-answer shape, not about any one benchmark question.
+_GIVE_UP_PHRASES = (
+    "unable to determine",
+    "cannot determine",
+    "can't determine",
+    "not able to determine",
+    "i don't know",
+)
+
+
+def _looks_incomplete(content, has_evidence: bool = False) -> bool:
+    """True for empty content, a bare stub header (e.g. "Final Answer:")
+    with nothing after it, or -- only when evidence has actually been
+    retrieved -- a short "I can't figure this out" non-answer. All three
+    are signs the model stopped short of using what it already has,
+    rather than a case where there's genuinely nothing to say (that path
+    is unaffected: with no evidence, run.py's hard zero-evidence
+    guardrail already produces the correct abstention regardless of what
+    the model's own text says, so it doesn't need catching here)."""
     if not isinstance(content, str):
         return not content
     text = content.strip()
-    return not text or (text.endswith(":") and len(text) < 30)
+    if not text:
+        return True
+    if text.endswith(":") and len(text) < 30:
+        return True
+    if has_evidence and len(text) < 100 and any(p in text.lower() for p in _GIVE_UP_PHRASES):
+        return True
+    return False
 
 
 def build_graph(db: Session):
@@ -100,16 +126,30 @@ def build_graph(db: Session):
         # A small model occasionally spends a whole turn on hidden reasoning
         # and stops without ever emitting real final-answer text --
         # finish_reason "stop", no tool_calls, and content that's either
-        # empty or just a stub header like "Final Answer:". Not a
-        # token-budget problem (plenty of the max_tokens budget is often
-        # left unused): the model just ends the turn incomplete. Left as
-        # is, this would silently discard evidence already gathered, since
-        # run.py treats empty/near-empty content the same as "nothing to
-        # say". Bounded retries (2 max) with an explicit nudge recover this
-        # in practice without risking an unbounded loop.
+        # empty, a stub header like "Final Answer:", or (when it actually
+        # has evidence in hand) a generic give-up like "Unable to
+        # determine." None of these are a token-budget problem (plenty of
+        # the max_tokens budget is often left unused): the model just ends
+        # the turn incomplete or gives up despite having what it needs.
+        # Left as is, this would silently discard evidence already
+        # gathered, since run.py treats a non-empty-but-useless answer the
+        # same as a real one. Bounded retries (2 max) recover this in
+        # practice without risking an unbounded loop -- when evidence
+        # exists, the retry nudge hands it over explicitly (the same
+        # digest technique force_answer_node uses below) instead of just
+        # asking again and risking the identical non-answer.
+        has_evidence = bool(state["evidence"])
         attempts = 0
-        while not response.tool_calls and _looks_incomplete(response.content) and attempts < 2:
-            nudge = SystemMessage(content="Provide your final answer now, in plain text.")
+        while not response.tool_calls and _looks_incomplete(response.content, has_evidence) and attempts < 2:
+            if has_evidence:
+                nudge = SystemMessage(
+                    content="You already have real evidence retrieved -- answer directly and "
+                    "specifically using ONLY this evidence. Do not say you are unable to "
+                    "determine an answer when this evidence is available:\n\n"
+                    + evidence_digest(state["evidence"])
+                )
+            else:
+                nudge = SystemMessage(content="Provide your final answer now, in plain text.")
             response = llm_with_tools.invoke(state["messages"] + [nudge])
             if isinstance(response.content, str):
                 response.content = strip_thinking(response.content)
@@ -142,6 +182,7 @@ def build_graph(db: Session):
             new_messages.append(ToolMessage(content=result_summary, tool_call_id=call["id"]))
             new_trace.append(ToolInvocation(
                 tool=name, input=args, output_summary=result_summary[:300], timestamp=_now(),
+                evidence_count=len(evidence),
             ))
             new_evidence.extend(evidence)
 
@@ -176,7 +217,7 @@ def build_graph(db: Session):
         # final answer actually use evidence retrieved in earlier rounds
         # instead of defaulting to "no evidence available".
         if state["evidence"]:
-            digest = "\n".join(f"- {e.detail} (source: {e.citation})" for e in state["evidence"])
+            digest = evidence_digest(state["evidence"])
             reminder = SystemMessage(
                 content="You have reached the tool-call limit. The evidence below was already "
                 "retrieved from ContextIQ in earlier steps -- answer the question using ONLY "

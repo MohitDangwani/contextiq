@@ -1,0 +1,255 @@
+# Phase 10 benchmark: 30 questions spanning ContextIQ's capabilities.
+#
+# Every expected_* field below was checked directly against the live,
+# seeded Postgres database (10 assets, their real owners/PII/quality
+# scores, the real lineage.yaml edges, the 2 real business terms, and the
+# 5 real documentation files) -- nothing here is invented or drawn from
+# outside knowledge. See scripts/run_evaluation.py for how this is
+# consumed.
+#
+# Ordered so the first 8 questions (the --limit 8 smoke set) span 8
+# different categories: known_factual, multi_tool, lineage, quality, pii,
+# business_definition, and two abstention variants. Questions 9-30 add
+# depth within each category, including a multi-hop lineage question and
+# a partial-evidence abstention question, for the full 30-question run.
+
+questions:
+  - id: q01
+    category: known_factual
+    question: "Who owns the orders dataset?"
+    expected_answer: "The orders dataset is owned by Sales Engineering."
+    expected_evidence_asset_ids: [orders]
+    expected_tools_any_of: [get_owner, search_assets]
+    should_abstain: false
+
+  - id: q02
+    category: multi_tool
+    question: "Which datasets contain PII and are owned by Sales Engineering?"
+    expected_answer: "customers and orders contain PII and are owned by Sales Engineering."
+    expected_evidence_asset_ids: [customers, orders]
+    expected_tools_any_of: [search_assets, check_pii]
+    should_abstain: false
+
+  - id: q03
+    category: lineage
+    question: "Where does the revenue dashboard's data come from?"
+    expected_answer: "Upstream from revenue_dashboard: monthly_revenue, fed by revenue_model, fed by order_items, payments, and returns."
+    expected_evidence_asset_ids: [monthly_revenue, revenue_model]
+    expected_tools_any_of: [get_lineage]
+    should_abstain: false
+
+  - id: q04
+    category: quality
+    question: "Is the payments dataset trustworthy?"
+    expected_answer: "No -- overall quality verdict is FAIL (score 72). The freshness check failed: no new payment records since 2026-06-10."
+    expected_evidence_asset_ids: [payments]
+    expected_tools_any_of: [check_quality]
+    should_abstain: false
+
+  - id: q05
+    category: pii
+    question: "Which datasets contain PII?"
+    expected_answer: "customers, orders, and payments contain PII."
+    expected_evidence_asset_ids: [customers, orders, payments]
+    expected_tools_any_of: [check_pii, search_assets]
+    should_abstain: false
+
+  - id: q06
+    category: business_definition
+    question: "What does customer lifetime value mean?"
+    expected_answer: "Predicted total revenue a customer will generate over their full relationship with Brightcart: historical net spend plus a forward-looking projection based on purchase frequency and average order value."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: [get_business_definition]
+    should_abstain: false
+
+  - id: q07
+    category: abstention_unknown_dataset
+    question: "What is the owner of the employee_attrition dataset?"
+    expected_answer: "ContextIQ has no dataset called employee_attrition -- the agent should abstain."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: []
+    should_abstain: true
+
+  - id: q08
+    category: abstention_out_of_domain
+    question: "What is the weather in Mumbai?"
+    expected_answer: "Weather is outside ContextIQ's domain -- the agent should abstain."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: []
+    should_abstain: true
+
+  - id: q09
+    category: known_factual
+    question: "Who owns the payments dataset?"
+    expected_answer: "Finance Analytics."
+    expected_evidence_asset_ids: [payments]
+    expected_tools_any_of: [get_owner, search_assets]
+    should_abstain: false
+
+  - id: q10
+    category: known_factual
+    question: "Who owns the products dataset?"
+    expected_answer: "Catalog Team."
+    expected_evidence_asset_ids: [products]
+    expected_tools_any_of: [get_owner, search_assets]
+    should_abstain: false
+
+  - id: q11
+    category: tool_use_schema
+    question: "What columns does the orders dataset have, and which one contains PII?"
+    expected_answer: "orders has customer_id, order_date, order_id, shipping_address, source_channel, status, and total_amount. shipping_address is the PII column (address category)."
+    expected_evidence_asset_ids: [orders]
+    expected_tools_any_of: [get_schema]
+    should_abstain: false
+
+  - id: q12
+    category: multi_tool
+    question: "Is the revenue dashboard trustworthy, and where does its data come from?"
+    expected_answer: "revenue_dashboard has no recorded quality checks. Its data comes upstream from monthly_revenue and, further back, revenue_model."
+    expected_evidence_asset_ids: [monthly_revenue, revenue_model]
+    expected_tools_any_of: [check_quality, get_lineage]
+    should_abstain: false
+
+  - id: q13
+    category: lineage_multi_hop
+    question: "Show the lineage from customers to the revenue dashboard."
+    expected_answer: "customers -> orders -> order_items -> revenue_model -> monthly_revenue -> revenue_dashboard."
+    expected_evidence_asset_ids: [order_items, revenue_model, monthly_revenue]
+    expected_tools_any_of: [get_lineage]
+    should_abstain: false
+
+  - id: q14
+    category: quality
+    question: "Is the customers dataset trustworthy?"
+    expected_answer: "Yes -- overall PASS. Completeness 98, freshness 100."
+    expected_evidence_asset_ids: [customers]
+    expected_tools_any_of: [check_quality]
+    should_abstain: false
+
+  - id: q15
+    category: quality
+    question: "Is the orders dataset trustworthy?"
+    expected_answer: "Mostly -- freshness PASS but a validity check WARNs: 3 orders have a shipping_address missing a postal code."
+    expected_evidence_asset_ids: [orders]
+    expected_tools_any_of: [check_quality]
+    should_abstain: false
+
+  - id: q16
+    category: pii
+    question: "Does the products dataset contain PII?"
+    expected_answer: "No, products does not contain PII."
+    expected_evidence_asset_ids: [products]
+    expected_tools_any_of: [check_pii, search_assets]
+    should_abstain: false
+
+  - id: q17
+    category: business_definition
+    question: "What is net revenue?"
+    expected_answer: "Revenue recognized after subtracting returns and refunds from gross order value: gross_amount - refund_amount, aggregated by month in monthly_revenue."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: [get_business_definition]
+    should_abstain: false
+
+  - id: q18
+    category: abstention_unknown_metric
+    question: "What does 'monthly active users' mean in ContextIQ?"
+    expected_answer: "Not a tracked ContextIQ business term -- the agent should abstain."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: []
+    should_abstain: true
+
+  - id: q19
+    category: documentation
+    question: "What is ContextIQ's PII handling policy?"
+    expected_answer: "A dataset is marked contains_pii if any column identifies an individual; PII columns are tagged with a category; customers, orders, and payments currently contain PII; access to PII columns is restricted to the owning team and Data Platform."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: [search_documentation]
+    should_abstain: false
+
+  - id: q20
+    category: abstention_unknown_documentation
+    question: "What is ContextIQ's disaster recovery and backup retention policy for the payments database?"
+    expected_answer: "Not documented anywhere in ContextIQ -- the agent should abstain."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: []
+    should_abstain: true
+
+  - id: q21
+    category: abstention_unknown_metric
+    question: "What is the company's employee attrition rate?"
+    expected_answer: "Not tracked in ContextIQ -- the agent should abstain."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: []
+    should_abstain: true
+
+  - id: q22
+    category: abstention_partial_evidence
+    question: "What is the owner of the orders dataset, and what is its GDPR data retention period?"
+    expected_answer: "Owner is Sales Engineering (known). GDPR data retention period is not documented in ContextIQ (unavailable) -- the agent should answer the known part and flag the gap, not invent it."
+    expected_evidence_asset_ids: [orders]
+    expected_tools_any_of: [get_owner, search_assets]
+    should_abstain: false
+
+  - id: q23
+    category: known_factual
+    question: "Who owns the marketing_campaigns dataset?"
+    expected_answer: "Marketing Ops."
+    expected_evidence_asset_ids: [marketing_campaigns]
+    expected_tools_any_of: [get_owner, search_assets]
+    should_abstain: false
+
+  - id: q24
+    category: quality
+    question: "Is the marketing_campaigns dataset trustworthy?"
+    expected_answer: "Mostly -- freshness WARNs: no campaigns created since 2026-08-01, so the marketing calendar may be stale."
+    expected_evidence_asset_ids: [marketing_campaigns]
+    expected_tools_any_of: [check_quality]
+    should_abstain: false
+
+  - id: q25
+    category: lineage
+    question: "What feeds into the revenue_model dataset?"
+    expected_answer: "order_items, payments, and returns feed into revenue_model."
+    expected_evidence_asset_ids: [order_items, payments, returns]
+    expected_tools_any_of: [get_lineage]
+    should_abstain: false
+
+  - id: q26
+    category: lineage
+    question: "What does the monthly_revenue dataset feed into?"
+    expected_answer: "monthly_revenue feeds into revenue_dashboard."
+    expected_evidence_asset_ids: [revenue_dashboard]
+    expected_tools_any_of: [get_lineage]
+    should_abstain: false
+
+  - id: q27
+    category: multi_tool
+    question: "Which PII datasets does Finance Analytics own?"
+    expected_answer: "payments."
+    expected_evidence_asset_ids: [payments]
+    expected_tools_any_of: [search_assets, check_pii]
+    should_abstain: false
+
+  - id: q28
+    category: known_factual
+    question: "Who owns the revenue_dashboard?"
+    expected_answer: "BI Team."
+    expected_evidence_asset_ids: [revenue_dashboard]
+    expected_tools_any_of: [get_owner, search_assets]
+    should_abstain: false
+
+  - id: q29
+    category: abstention_out_of_domain
+    question: "Summarize today's stock market news."
+    expected_answer: "Outside ContextIQ's domain -- the agent should abstain."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: []
+    should_abstain: true
+
+  - id: q30
+    category: abstention_unknown_dataset
+    question: "What is the schema of the employee_salaries dataset?"
+    expected_answer: "ContextIQ has no dataset called employee_salaries -- the agent should abstain."
+    expected_evidence_asset_ids: []
+    expected_tools_any_of: []
+    should_abstain: true

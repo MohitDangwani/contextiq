@@ -30,6 +30,11 @@ class ToolInvocation:
     input: dict
     output_summary: str
     timestamp: str
+    evidence_count: int = 0  # how many EvidenceItems THIS specific call produced --
+    # 0 means this specific lookup came back empty (not found / no match),
+    # a structural signal app.agent.grounding uses to tell "nothing was
+    # found for this" apart from "something unrelated was found elsewhere",
+    # without re-parsing free text.
 
 
 @dataclass
@@ -39,6 +44,14 @@ class ToolResult:
 
     summary: str
     evidence: list[EvidenceItem] = field(default_factory=list)
+
+
+def evidence_digest(evidence: list[EvidenceItem]) -> str:
+    """Render gathered evidence as a flat, citable list -- the one shared
+    formatting used everywhere evidence needs to be handed back to an LLM
+    call (force_answer's reminder, the agent's give-up retry, the
+    grounding verifier). One definition so all three read the same shape."""
+    return "\n".join(f"- {e.detail} (source: {e.citation})" for e in evidence)
 
 
 class AgentState(TypedDict):

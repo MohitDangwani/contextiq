@@ -22,6 +22,12 @@ class LineageHop:
     depth: int
     transformation: str | None
     description: str | None
+    via_asset_id: str  # the specific neighboring node this hop's edge connects
+    # to/from -- lets a caller state the edge's exact two endpoints (e.g.
+    # "orders -> order_items") instead of just "N hops away via
+    # TRANSFORMATION", which is ambiguous once there's more than one hop
+    # and leaves room to misattribute a transformation to the wrong edge
+    # when narrating a multi-hop chain in prose.
 
 
 @dataclass
@@ -56,6 +62,7 @@ def _traverse(
                 depth=depth + 1,
                 transformation=edge.transformation,
                 description=edge.description,
+                via_asset_id=current,
             ))
             queue.append((neighbor, depth + 1))
     return hops

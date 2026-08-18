@@ -219,20 +219,30 @@ def _run_get_lineage(db: Session, asset_id: str, direction: str = "both") -> Too
     if result.upstream:
         lines.append("Upstream (feeds into this dataset):")
         for hop in sorted(result.upstream, key=lambda h: h.depth):
-            line = f"  - {hop.asset_id} ({hop.asset_name}), {hop.depth} hop(s) away via: {hop.transformation}"
+            # State this hop's OWN edge endpoints explicitly (not just "N hops
+            # away via TRANSFORMATION") so a multi-hop chain can't have a
+            # transformation from one edge misattributed to an adjacent one
+            # when it's narrated as a sequential path.
+            line = (
+                f"  - {hop.asset_id} ({hop.asset_name}), {hop.depth} hop(s) upstream. "
+                f"Direct edge for this hop: {hop.asset_id} -> {hop.via_asset_id}, via: {hop.transformation}"
+            )
             lines.append(line)
             evidence.append(EvidenceItem(
                 source_type="lineage", title=hop.asset_name, asset_id=hop.asset_id,
-                detail=line.strip(), citation=f"lineage: {hop.asset_id} -> {asset_id}",
+                detail=line.strip(), citation=f"lineage: {hop.asset_id} -> {hop.via_asset_id}",
             ))
     if result.downstream:
         lines.append("Downstream (this dataset feeds into):")
         for hop in sorted(result.downstream, key=lambda h: h.depth):
-            line = f"  - {hop.asset_id} ({hop.asset_name}), {hop.depth} hop(s) away via: {hop.transformation}"
+            line = (
+                f"  - {hop.asset_id} ({hop.asset_name}), {hop.depth} hop(s) downstream. "
+                f"Direct edge for this hop: {hop.via_asset_id} -> {hop.asset_id}, via: {hop.transformation}"
+            )
             lines.append(line)
             evidence.append(EvidenceItem(
                 source_type="lineage", title=hop.asset_name, asset_id=hop.asset_id,
-                detail=line.strip(), citation=f"lineage: {asset_id} -> {hop.asset_id}",
+                detail=line.strip(), citation=f"lineage: {hop.via_asset_id} -> {hop.asset_id}",
             ))
     return ToolResult(summary=f"Lineage for '{asset_id}':\n" + "\n".join(lines), evidence=evidence)
 

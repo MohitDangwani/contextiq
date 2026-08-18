@@ -14,7 +14,9 @@ Requires: the `db` docker-compose service running and seeded
 import pytest
 from pydantic import ValidationError
 
-from app.agent.tools import AssetIdArgs, build_tool_specs
+from app.agent.graph import _looks_incomplete
+from app.agent.text import extract_json_object
+from app.agent.tools import AssetIdArgs, _sanitize_args, build_tool_specs
 from app.config.database import SessionLocal
 
 
@@ -152,6 +154,29 @@ def test_get_lineage_unknown_asset(specs):
     assert result.evidence == []
 
 
+def test_get_lineage_hop_states_its_own_direct_edge(specs):
+    """Regression for a lineage relationship-type mixup: a multi-hop query
+    used to return each hop as just "N hops away via TRANSFORMATION" with
+    no stated endpoints, leaving an LLM narrating the chain free to
+    misattribute one edge's transformation to an adjacent edge. Every
+    hop's evidence must now name its OWN specific two endpoints, so a
+    transformation can never be read as belonging to the wrong edge --
+    checked generically across two different hops in the same query, not
+    tied to one benchmark question."""
+    result = specs["get_lineage"].run(asset_id="revenue_dashboard", direction="upstream")
+    by_id = {e.asset_id: e.detail for e in result.evidence}
+
+    # orders -> order_items is a foreign key, NOT the dbt model that
+    # connects order_items -> revenue_model one hop further out.
+    assert "orders -> order_items" in by_id["orders"]
+    assert "foreign key" in by_id["orders"].lower()
+    assert "revenue_model" not in by_id["orders"]
+
+    # order_items -> revenue_model is the dbt model -- its own, distinct edge.
+    assert "order_items -> revenue_model" in by_id["order_items"]
+    assert "dbt model" in by_id["order_items"].lower()
+
+
 # ---------------------------------------------------------------------------
 # check_quality
 # ---------------------------------------------------------------------------
@@ -220,3 +245,67 @@ def test_tool_schema_exposes_name_and_description(specs):
         assert spec.tool.name == name
         assert spec.tool.description
         assert spec.tool.args_schema is not None
+
+
+# ---------------------------------------------------------------------------
+# Class 16: malformed optional tool arguments (the literal-"None" bug)
+# ---------------------------------------------------------------------------
+
+def test_sanitize_args_coerces_literal_none_string():
+    assert _sanitize_args({"asset_id": "None", "query": "orders"}) == {"asset_id": None, "query": "orders"}
+
+
+def test_sanitize_args_coerces_null_case_insensitive():
+    assert _sanitize_args({"owner": "NULL", "domain": "  none  "}) == {"owner": None, "domain": None}
+
+
+def test_sanitize_args_leaves_real_values_and_types_alone():
+    assert _sanitize_args({"pii_only": True, "query": "revenue", "owner": None}) == {
+        "pii_only": True, "query": "revenue", "owner": None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Class 15: empty/stub model response detection
+# ---------------------------------------------------------------------------
+
+def test_looks_incomplete_empty_content():
+    assert _looks_incomplete("") is True
+    assert _looks_incomplete(None) is True
+
+
+def test_looks_incomplete_stub_header():
+    assert _looks_incomplete("Final Answer:") is True
+
+
+def test_looks_incomplete_give_up_only_when_evidence_exists():
+    assert _looks_incomplete("Unable to determine.", has_evidence=True) is True
+    # Without evidence, this isn't a "gave up despite having it" case --
+    # run.py's zero-evidence backstop is what handles that path.
+    assert _looks_incomplete("Unable to determine.", has_evidence=False) is False
+
+
+def test_looks_incomplete_real_answer_is_not_flagged():
+    assert _looks_incomplete("The orders dataset is owned by Sales Engineering.", has_evidence=True) is False
+
+
+# ---------------------------------------------------------------------------
+# Shared JSON-verdict parsing (used by the Phase 10 judge and the
+# grounding verifier)
+# ---------------------------------------------------------------------------
+
+def test_extract_json_object_clean():
+    assert extract_json_object('{"status": "supported", "reasoning": "ok"}') == {
+        "status": "supported", "reasoning": "ok",
+    }
+
+
+def test_extract_json_object_wrapped_in_extra_text():
+    parsed = extract_json_object('Sure, here you go:\n{"score": 1, "reasoning": "partial"}\nDone.')
+    assert parsed == {"score": 1, "reasoning": "partial"}
+
+
+def test_extract_json_object_malformed_returns_none():
+    assert extract_json_object("I think this is good, no JSON here") is None
+    assert extract_json_object("") is None
+    assert extract_json_object(None) is None

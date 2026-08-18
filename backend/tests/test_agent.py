@@ -14,6 +14,7 @@ Run with:
     cd backend && ..\\.venv\\Scripts\\pytest tests/test_agent.py -v -s
 """
 from app.agent.run import NOT_FOUND_MESSAGE, run_agent
+from app.agent.text import flags_gap
 
 
 def _asset_ids(result) -> set[str]:
@@ -83,8 +84,19 @@ def test_multi_tool_pii_and_owner():
 
 def test_unanswerable_question():
     result = run_agent("What is the capital of France?")
-    assert result.evidence == []
-    assert "could not find" in result.answer.lower()
+    lowered = result.answer.lower()
+    # The actual safety property under test: never answer from outside/
+    # pretrained knowledge, and explicitly abstain. `result.evidence == []`
+    # is too strict a proxy for that -- the model is allowed to make
+    # reasonable exploratory tool calls (e.g. a broad search_assets) that
+    # incidentally return real but irrelevant catalog evidence, as long as
+    # that irrelevant evidence never becomes part of the answer. See
+    # docs/agent.md's grounded-abstention section.
+    assert "paris" not in lowered  # never answers from outside knowledge
+    if not result.evidence:
+        assert result.answer == NOT_FOUND_MESSAGE
+    else:
+        assert flags_gap(result.answer)
 
 
 def test_no_thinking_leakage_in_answer():
@@ -132,10 +144,7 @@ def test_unknown_dataset_abstains():
     result = run_agent("What is the owner of the employee_attrition dataset?")
     lowered = result.answer.lower()
     assert "sales engineering" not in lowered  # must not borrow a real owner
-    assert any(
-        w in lowered
-        for w in ["don't have enough information", "could not find", "does not exist", "doesn't exist"]
-    )
+    assert flags_gap(result.answer)
 
 
 def test_unknown_business_metric_abstains():
@@ -149,7 +158,7 @@ def test_unknown_business_metric_abstains():
     else:
         lowered = result.answer.lower()
         assert not any(ch.isdigit() for ch in lowered)  # no invented attrition figure
-        assert any(w in lowered for w in ["could not find", "don't have enough information", "no ", "not available"])
+        assert flags_gap(result.answer)
 
 
 def test_out_of_domain_question_abstains():
@@ -159,7 +168,7 @@ def test_out_of_domain_question_abstains():
     else:
         lowered = result.answer.lower()
         assert not any(w in lowered for w in ["degrees", "celsius", "fahrenheit", "sunny", "rain", "humidity"])
-        assert any(w in lowered for w in ["could not find", "don't have enough information", "not available"])
+        assert flags_gap(result.answer)
 
 
 def test_unknown_documentation_abstains():
@@ -169,9 +178,48 @@ def test_unknown_documentation_abstains():
     if not result.evidence:
         assert result.answer == NOT_FOUND_MESSAGE
     else:
-        lowered = result.answer.lower()
-        # The real gap must be named, not papered over with an invented policy.
-        assert any(w in lowered for w in ["no documentation", "does not have", "doesn't have", "could not find", "not available", "no specific"])
+        # The real gap must be named, not papered over with an invented
+        # policy, and not silently skipped by substituting some other real
+        # fact the tools happened to return instead -- if the answer doesn't
+        # flag the gap, it substituted something else. See docs/agent.md's
+        # grounded-abstention section.
+        assert flags_gap(result.answer)
+
+
+def _leading_word(answer: str) -> str:
+    stripped = answer.strip().lstrip("*").strip()
+    return stripped.split(None, 1)[0].rstrip(",.:").lower() if stripped else ""
+
+
+def test_boolean_question_negative_evidence_does_not_lead_with_yes():
+    """Regression for a yes/no polarity contradiction: a question was once
+    answered "Yes ... pii_status of 'none', meaning it does not contain
+    PII" -- a leading affirmative contradicting the negative fact stated
+    right after it. Uses order_items (pii_status=none in the real seed
+    data), a different asset than the one that originally surfaced this,
+    so the test verifies the general polarity-consistency property, not
+    one specific question."""
+    result = run_agent("Does the order_items dataset contain PII?")
+    assert "order_items" in _asset_ids(result)
+    lowered = result.answer.lower()
+    assert _leading_word(result.answer) != "yes"
+    # The model may answer tersely ("No.") or with elaboration -- the
+    # polarity property holds either way; only check the elaborated claim
+    # when there's enough text for one to exist.
+    if len(lowered.split()) > 3:
+        assert "does not contain" in lowered or "no pii" in lowered or "not contain pii" in lowered
+
+
+def test_boolean_question_positive_evidence_does_not_lead_with_no():
+    """The other direction of the same property: a dataset that DOES
+    contain PII must not have its answer's leading word contradict that
+    (e.g. opening with "No" before describing real PII columns)."""
+    result = run_agent("Does the customers dataset contain PII?")
+    assert "customers" in _asset_ids(result)
+    lowered = result.answer.lower()
+    assert _leading_word(result.answer) != "no"
+    if len(lowered.split()) > 3:
+        assert "pii" in lowered
 
 
 def test_partial_evidence_separates_known_from_unavailable():
@@ -185,7 +233,4 @@ def test_partial_evidence_separates_known_from_unavailable():
     lowered = result.answer.lower()
     assert "sales engineering" in lowered  # the known part is answered
     assert "gdpr" in lowered or "retention" in lowered  # the gap is named, not silently dropped
-    assert any(
-        w in lowered
-        for w in ["no documentation", "not available", "cannot", "couldn't", "could not", "don't have"]
-    )
+    assert flags_gap(result.answer)

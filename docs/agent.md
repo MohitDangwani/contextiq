@@ -131,17 +131,86 @@ Examples of what this produces:
 | "What is the weather in Mumbai?" | Explicit abstention — out of domain, zero tool calls. |
 | "What is the owner of the orders dataset, and its GDPR retention period?" | Owner answered from evidence; GDPR retention explicitly named as unavailable, not invented. |
 
-**What this doesn't do**: there's no separate relevance-scoring layer
-that inspects gathered evidence for topical fit to the question — that
-would be a meaningfully bigger, more fragile piece of machinery (fuzzy
-matching or another LLM call) for a project instruction that explicitly
-ruled out unnecessary complexity and a rule-based chatbot layer. The two
-guarantees that do exist — the hard zero-evidence code backstop, and the
-prompt rules above — were verified empirically against all 7 new
-regression tests (multiple stable repeated runs, not a single lucky
-pass), which is the honest scope of the current guarantee. See
-`docs/progress.md` Phase 6.1 for the full test history, including the
-failure modes discovered and fixed along the way.
+**Update (Phase 10.1) — this section is now historical.** The prompt-only
+approach above turned out to be an *incomplete* guarantee: it reduced how
+often irrelevant evidence got treated as an answer, but couldn't
+eliminate it, because nothing ever checked evidence relevance in code --
+see the "Grounding architecture redesign" section below for why that
+matters and what replaced it.
+
+## Grounding architecture redesign (Phase 10.1)
+
+**Root cause of the whack-a-mole cycle.** Every fix up through Phase 10
+(polarity, lineage evidence presentation, give-up retries) genuinely
+solved the problem it targeted, but a `q07`/`q20`-shaped failure kept
+resurfacing on *different* questions each time, because none of those
+fixes touched the actual gap: `run.py`'s entire code-enforced guarantee
+was `if evidence: trust the model's answer / else: abstain`. `evidence`
+non-empty has never meant "evidence that answers this question" — only
+"some tool call produced some `EvidenceItem` this turn". A model that
+went exploring and found real, correctly-grounded facts about something
+else entirely could have that irrelevant evidence accepted as grounding,
+because nothing downstream ever compared it back to the question. Every
+other symptom (draft-text quality, evidence-presentation ambiguity,
+yes/no polarity) was real and worth fixing, but none of them were *this*
+gap — which is why prompt tweaking never permanently closed it.
+
+**The fix: a dedicated grounding gate, not another prompt rule.**
+`app/agent/grounding.py`'s `verify_support(question, evidence, trace)` is
+a second, code-enforced check in `run.py`, run whenever evidence is
+non-empty:
+
+```
+zero evidence  ---------------------------------------> NOT_FOUND_MESSAGE  (unchanged hard backstop)
+non-empty evidence -> verify_support() -> "not_supported" -> NOT_FOUND_MESSAGE
+                                        -> "supported"/"partial" -> the model's own drafted answer
+```
+
+Classifying "does this evidence address this question" is unavoidably a
+language-understanding task -- there's no non-NLP deterministic way to do
+it -- so it's still an LLM call. But it's a *separate*, single-purpose
+classification (the same pattern as the Phase 10 judge), not one more
+bullet competing for attention in the main agent's already-crowded
+system prompt, and its output is a constrained verdict
+(`supported`/`partial`/`not_supported`), not free text the rest of the
+system has to interpret. What happens next is decided by **code**, not
+by hoping the model polices itself. If the verifier's response fails to
+parse, or the call throws, it fails **closed** (`not_supported` ->
+abstain) -- consistent with the rest of this project's "never guess"
+posture: a broken classifier can only make the system more cautious,
+never less safe.
+
+Two supporting structural changes, both small:
+- `ToolInvocation` gained an `evidence_count` field (`app/agent/state.py`)
+  -- already-computable data (`len(evidence)` per call) just wasn't being
+  surfaced. This lets the verifier see explicit "these specific lookups
+  found nothing" context alongside "this is what was found", which is
+  what makes Invariant 4 (a targeted not-found can't be overridden by an
+  unrelated broader hit) hold structurally rather than by hoping the
+  verifier notices on its own.
+- The verifier prompt explicitly separates "right entity" from "right
+  attribute": evidence about the *correct dataset* but the *wrong
+  attribute* (e.g. PII status when the question asked about a backup
+  policy) is not_supported too. This was added after a real failure
+  during testing where evidence naming the correct dataset -- just about
+  something else entirely -- was initially misclassified as supported.
+
+**What's still not deterministic, and why:** the relevance judgment
+itself. A from-scratch deterministic relevance classifier would need
+real NLP infrastructure this project doesn't have and wasn't asked to
+build. The honest scope of the guarantee: the zero-evidence path is a
+hard, unconditional code guarantee; the irrelevant-evidence path is a
+code-*enforced* decision fed by an LLM classification, verified stable
+across many repeated runs (see `docs/progress.md` Phase 10.1) but not
+mathematically provable the way the zero-evidence backstop is.
+
+**`app/agent/text.py`'s `flags_gap()`/`GAP_PHRASES`** (phrase-based
+abstention detection) is explicitly *not* part of this enforcement path
+any more, and never should be added back into it -- it's a measurement
+tool for the Phase 10 harness and test assertions, kept deliberately
+separate because phrase-matching a model's free-text wording already
+needed three corrections this project for being too brittle to trust
+with a safety-critical decision.
 
 ## The tool layer (`app/agent/tools.py`)
 
