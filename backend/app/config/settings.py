@@ -39,5 +39,10 @@ class Settings(BaseSettings):
     # Phase 13 (security): run_sql tool stays read-only unless this is true.
     allow_destructive_sql: bool = False
 
+    # Phase 11: comma-separated allow-list of origins permitted to call the
+    # API (CORSMiddleware in app.main). Not "*" -- this API serves real
+    # catalog data, even if synthetic. Defaults to the Vite dev server.
+    cors_allowed_origins: str = "http://localhost:5173"
+
 
 settings = Settings()

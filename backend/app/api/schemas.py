@@ -7,8 +7,9 @@ directly from an ORM object (or a plain dataclass, for the composite
 results like lineage/quality) without a manual field-by-field mapping.
 """
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import AssetType, PIIStatus, QualityCheckStatus
 
@@ -81,6 +82,7 @@ class LineageHopOut(ORMBase):
     depth: int
     transformation: str | None
     description: str | None
+    via_asset_id: str
 
 
 class LineageOut(ORMBase):
@@ -102,3 +104,70 @@ class SearchResultsOut(BaseModel):
     assets: list[AssetSummaryOut]
     business_terms: list[BusinessTermOut]
     documentation: list[DocumentationOut]
+
+
+# --- Chat (Phase 11): wraps app.agent.run.run_agent()'s own return type ---
+# (AgentResult/SourceRef/EvidenceItem/ToolInvocation, app/agent/state.py)
+# field-for-field. No new logic lives here -- this is purely a response
+# shape for the same dataclasses the agent already returns.
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(..., min_length=1)
+
+
+class SourceRefOut(ORMBase):
+    label: str
+    asset_id: str | None
+    source_type: str
+
+
+class EvidenceItemOut(ORMBase):
+    source_type: str
+    title: str
+    asset_id: str | None
+    detail: str
+    citation: str
+
+
+class ToolInvocationOut(ORMBase):
+    tool: str
+    input: dict
+    output_summary: str
+    timestamp: str
+    evidence_count: int
+
+
+class ChatResponseOut(ORMBase):
+    question: str
+    answer: str
+    sources: list[SourceRefOut]
+    evidence: list[EvidenceItemOut]
+    trace: list[ToolInvocationOut]
+    grounding_status: Literal["supported", "partial", "not_supported"]
+
+
+# --- Lineage graph (Phase 12): whole-catalog view, separate from the
+# existing per-asset LineageOut/LineageHopOut traversal above. Backed by
+# app.services.lineage.get_full_graph(), a flat dump of all assets/edges --
+# a different query shape, not a duplicate of the BFS traversal. ---
+
+
+class LineageGraphNodeOut(ORMBase):
+    asset_id: str
+    asset_name: str
+    asset_type: AssetType
+    domain: str | None
+    pii_status: PIIStatus
+
+
+class LineageGraphEdgeOut(ORMBase):
+    source_asset_id: str
+    target_asset_id: str
+    transformation: str | None
+    description: str | None
+
+
+class LineageGraphOut(BaseModel):
+    nodes: list[LineageGraphNodeOut]
+    edges: list[LineageGraphEdgeOut]

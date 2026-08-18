@@ -1,6 +1,6 @@
 """LangGraph state and shared data types for the ContextIQ agent."""
 from dataclasses import dataclass, field
-from typing import Annotated, TypedDict
+from typing import Annotated, Literal, TypedDict
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
@@ -78,3 +78,18 @@ class AgentResult:
     sources: list[SourceRef]
     evidence: list[EvidenceItem]
     trace: list[ToolInvocation]
+    # The grounding gate's actual verdict (app.agent.grounding.verify_support),
+    # kept instead of discarded after run_agent() decides the answer -- lets
+    # callers (the API, the frontend) render supported/partial/abstained
+    # state off the real decision instead of re-deriving a weaker proxy
+    # (e.g. "evidence is non-empty") that can't distinguish partial from
+    # supported. "not_supported" on the zero-evidence hard-backstop path too,
+    # since that path is semantically the same outcome (nothing supports
+    # an answer), it just never reaches verify_support() to get there.
+    #
+    # Defaults to "not_supported" (fail-closed, same posture as
+    # app.agent.grounding) so existing synthetic-AgentResult call sites
+    # (e.g. test_evaluation.py's _result() helper, predating this field)
+    # keep working without needing to know about grounding internals --
+    # run_agent() itself always sets this explicitly.
+    grounding_status: Literal["supported", "partial", "not_supported"] = "not_supported"

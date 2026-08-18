@@ -53,6 +53,10 @@ def run_agent(question: str, db: Session | None = None) -> AgentResult:
             # instructions on every call. This is the hard guarantee
             # behind "the agent must not invent information".
             answer = NOT_FOUND_MESSAGE
+            # This path never reaches verify_support() -- there's nothing
+            # to classify -- but it's the same outcome ("nothing supports
+            # an answer"), so it gets the same label callers act on.
+            grounding_status = "not_supported"
         else:
             # Evidence existing is NOT the same as evidence that answers
             # THIS question -- a model that went exploring can gather real,
@@ -67,6 +71,7 @@ def run_agent(question: str, db: Session | None = None) -> AgentResult:
             draft = last_content if isinstance(last_content, str) and last_content.strip() else ""
             verdict = verify_support(question, evidence, final_state["trace"])
             answer = draft if draft and verdict.status != "not_supported" else NOT_FOUND_MESSAGE
+            grounding_status = verdict.status
 
         return AgentResult(
             question=question,
@@ -74,6 +79,7 @@ def run_agent(question: str, db: Session | None = None) -> AgentResult:
             sources=_dedupe_sources(evidence),
             evidence=evidence,
             trace=final_state["trace"],
+            grounding_status=grounding_status,
         )
     finally:
         if owns_session:
