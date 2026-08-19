@@ -1,0 +1,8 @@
+# MCP server dependencies. This process only ever calls into
+# backend/app/services (+ app/rag/retrieval for search_documentation) and
+# app/api/schemas (response shaping) -- never app/agent or app/api/routes
+# -- so it needs the DB/RAG/schema half of the backend's own requirements,
+# plus the MCP SDK itself. Kept as its own file (not backend/requirements.txt)
+# since Phase 14.2 gives this its own Docker image.
+-r ../backend/requirements.txt
+mcp[cli]==1.29.0
